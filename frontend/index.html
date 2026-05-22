@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>
+        AI Research Citation Assistant
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    />
+
+</head>
+
+
+
+<body>
+
+    <div class="app-layout">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+
+            <!-- LOGO -->
+            <div class="logo">
+                ResearchAI
+            </div>
+
+            <!-- UPLOAD CARD -->
+            <div class="upload-card">
+
+                <div class="upload-icon">
+                    📚
+                </div>
+
+                <h2>
+                    Upload Research Papers
+                </h2>
+
+                <p>
+                    Upload multiple PDFs for semantic retrieval,
+                    research analysis, and AI-powered insights.
+                </p>
+
+                <!-- FILE INPUT -->
+                <input
+                    type="file"
+                    id="pdfFile"
+                    multiple
+                    hidden
+                />
+
+                <!-- BUTTONS -->
+                <button
+                    class="upload-btn"
+                    onclick="document.getElementById('pdfFile').click()"
+                >
+                    Select Research PDFs
+                </button>
+
+                <button
+                    class="process-btn"
+                    onclick="uploadPDF()"
+                >
+                    Upload & Process Papers
+                </button>
+
+                <!-- STATUS -->
+                <div id="uploadStatus"></div>
+
+            </div>
+
+            <!-- PAPERS SECTION -->
+            <div class="papers-section">
+
+                <div class="section-title">
+                    Research Library
+                </div>
+
+                <div id="papersList"></div>
+
+            </div>
+
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- HERO -->
+            <div class="hero-section">
+
+                <h1>
+                    AI Research Citation Assistant
+                </h1>
+
+                <p>
+                    Semantic Retrieval • Research Intelligence •
+                    AI-Powered Literature Insights
+                </p>
+
+            </div>
+
+            <!-- QUERY -->
+            <div class="query-container">
+
+                <textarea
+                    id="queryInput"
+                    placeholder="Search research topics, methodologies, architectures, or related work..."
+                ></textarea>
+
+                <button
+                    class="generate-btn"
+                    onclick="generateSummary()"
+                >
+                    Generate AI Research Insights
+                </button>
+
+            </div>
+
+            <!-- RESULTS -->
+            <div class="results-grid">
+
+                <!-- SUMMARY -->
+                <div class="result-card">
+
+                    <h2>
+                        AI Research Insights
+                    </h2>
+
+                    <div id="summaryOutput"></div>
+
+                </div>
+
+                <!-- PAPERS -->
+                <div class="result-card">
+
+                    <h2>
+                        Referenced Research Papers
+                    </h2>
+
+                    <div id="sourcePapers"></div>
+
+                </div>
+
+                <!-- CHUNKS -->
+                <div class="result-card">
+
+                    <h2>
+                        Retrieved Research Evidence
+                    </h2>
+
+                    <div id="retrievedChunks"></div>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
