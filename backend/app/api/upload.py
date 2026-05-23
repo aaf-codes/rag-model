@@ -1,30 +1,60 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    File,
+    HTTPException
+)
+
 import os
 import shutil
 
-from app.services.pdf_service import extract_text_from_pdf
-from app.services.chunk_service import split_text_into_chunks
-from app.services.embedding_service import create_embedding
-from app.services.vectordb_service import store_embedding
+from app.services.pdf_service import (
+    extract_text_from_pdf,
+    extract_paper_metadata
+)
+
+from app.services.chunk_service import (
+    split_text_into_chunks
+)
+
+from app.services.embedding_service import (
+    create_embedding
+)
+
+from app.services.vectordb_service import (
+    store_embedding,
+    paper_exists
+)
 
 router = APIRouter()
 
-# Upload folder path
+
+# UPLOAD FOLDER PATH
 UPLOAD_FOLDER = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(__file__)
+        )
+    ),
     "uploads"
 )
 
-# Create uploads folder if not exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# CREATE UPLOADS FOLDER
+os.makedirs(
+    UPLOAD_FOLDER,
+    exist_ok=True
+)
 
 
 @router.post("/upload-paper")
-async def upload_paper(file: UploadFile = File(...)):
+async def upload_paper(
+    file: UploadFile = File(...)
+):
 
     try:
 
-        # Validate PDF
+        # VALIDATE PDF
         if not file.filename.endswith(".pdf"):
 
             raise HTTPException(
@@ -32,26 +62,46 @@ async def upload_paper(file: UploadFile = File(...)):
                 detail="Only PDF files are allowed"
             )
 
-        # Full file path
+        # CHECK DUPLICATE PAPER
+        if paper_exists(file.filename):
+
+            raise HTTPException(
+
+                status_code=409,
+
+                detail=
+                "This paper has already been uploaded. Delete it first if you want to re-index it."
+
+            )
+
+        # FILE PATH
         file_path = os.path.join(
             UPLOAD_FOLDER,
             file.filename
         )
 
-        # Save uploaded PDF
-        with open(file_path, "wb") as buffer:
+        # SAVE PDF
+        with open(
+            file_path,
+            "wb"
+        ) as buffer:
 
             shutil.copyfileobj(
                 file.file,
                 buffer
             )
 
-        # Extract text from PDF
+        # EXTRACT FULL TEXT
         extracted_text = extract_text_from_pdf(
             file_path
         )
 
-        # Empty PDF check
+        # EXTRACT PAPER METADATA
+        metadata = extract_paper_metadata(
+            file_path
+        )
+
+        # EMPTY PDF CHECK
         if not extracted_text.strip():
 
             raise HTTPException(
@@ -59,28 +109,74 @@ async def upload_paper(file: UploadFile = File(...)):
                 detail="No text found inside PDF"
             )
 
-        # Split into chunks
+        # SECTION-AWARE CHUNKING
         chunks = split_text_into_chunks(
             extracted_text
         )
 
-        # Create embeddings + store
-        for index, chunk in enumerate(chunks):
+        # LIMIT CHUNKS
+        chunks = chunks[:5]
 
-            embedding = create_embedding(chunk)
+        # CREATE EMBEDDINGS + STORE
+        for index, chunk_data in enumerate(chunks):
+
+            chunk_text = (
+                chunk_data["text"]
+            )
+
+            section_name = (
+                chunk_data["section"]
+            )
+
+            embedding = create_embedding(
+                chunk_text
+            )
 
             store_embedding(
-                chunk=chunk,
+
+                chunk=chunk_text,
+
                 embedding=embedding,
+
                 filename=file.filename,
-                chunk_index=index
+
+                chunk_index=index,
+
+                title=metadata["title"],
+
+                authors=metadata["authors"],
+
+                year=metadata["year"],
+
+                section=section_name
+
             )
 
         return {
-            "message": "PDF uploaded successfully ✅",
-            "filename": file.filename,
-            "total_chunks": len(chunks)
+
+            "message":
+            "PDF uploaded successfully ✅",
+
+            "filename":
+            file.filename,
+
+            "title":
+            metadata["title"],
+
+            "authors":
+            metadata["authors"],
+
+            "year":
+            metadata["year"],
+
+            "stored_chunks":
+            len(chunks)
+
         }
+
+    except HTTPException as e:
+
+        raise e
 
     except Exception as e:
 

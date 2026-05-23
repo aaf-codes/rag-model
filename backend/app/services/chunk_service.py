@@ -1,34 +1,96 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import re
 
+from langchain_text_splitters import (
+    RecursiveCharacterTextSplitter
+)
+
+
+# STANDARD PAPER HEADINGS
+SECTION_HEADERS = [
+
+    "abstract",
+
+    "introduction",
+
+    "methodology",
+
+    "methods",
+
+    "results",
+
+    "discussion",
+
+    "conclusion",
+
+    "references"
+
+]
+
+
+# SECTION-AWARE CHUNKING
 def split_text_into_chunks(text):
 
-    # Bigger chunk size
-    # = fewer embeddings
-    # = faster uploads
+    lines = text.split("\n")
 
-    text_splitter = RecursiveCharacterTextSplitter(
+    sections = {}
 
-        chunk_size=1200,
+    current_section = "General"
 
-        chunk_overlap=100,
+    sections[current_section] = ""
 
-        separators=[
-            "\n\n",
-            "\n",
-            ". ",
-            " "
-        ]
+    # DETECT HEADINGS
+    for line in lines:
+
+        clean_line = line.strip().lower()
+
+        if clean_line in SECTION_HEADERS:
+
+            current_section = line.strip()
+
+            sections[current_section] = ""
+
+        else:
+
+            sections[current_section] += (
+                line + "\n"
+            )
+
+    # FALLBACK
+    # If no headings found
+    if len(sections) == 1:
+
+        sections = {
+            "Full Document": text
+        }
+
+    # CHUNK INSIDE EACH SECTION
+    splitter = RecursiveCharacterTextSplitter(
+
+        chunk_size=300,
+
+        chunk_overlap=30
     )
 
-    chunks = text_splitter.split_text(text)
+    final_chunks = []
 
-    # Remove tiny useless chunks
-    cleaned_chunks = []
+    for section_name, section_text in sections.items():
 
-    for chunk in chunks:
+        chunks = splitter.split_text(
+            section_text
+        )
 
-        if len(chunk.strip()) > 100:
+        for chunk in chunks:
 
-            cleaned_chunks.append(chunk)
+            if len(chunk.strip()) > 80:
 
-    return cleaned_chunks
+                final_chunks.append({
+
+                    "section":
+                    section_name,
+
+                    "text":
+                    chunk
+
+                })
+
+    return final_chunks

@@ -1,43 +1,126 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.services.embedding_service import create_embedding
-from app.services.vectordb_service import search_similar_chunks
-from app.services.generation_service import generate_related_work
+from app.services.embedding_service import (
+    create_embedding
+)
+
+from app.services.vectordb_service import (
+    search_similar_chunks,
+    RELEVANCE_THRESHOLD
+)
+
+from app.services.generation_service import (
+    generate_related_work
+)
 
 router = APIRouter()
 
+
+# REQUEST MODEL
 class QueryRequest(BaseModel):
+
     query: str
+
 
 @router.post("/query")
 def query_papers(data: QueryRequest):
 
-    # Convert query into embedding
-    query_embedding = create_embedding(data.query)
+    # CONVERT QUERY TO EMBEDDING
+    query_embedding = create_embedding(
+        data.query
+    )
 
-    # Retrieve relevant chunks
-    results = search_similar_chunks(query_embedding)
+    # SEARCH SIMILAR CHUNKS
+    results = search_similar_chunks(
+        query_embedding
+    )
 
-    retrieved_chunks = results["documents"][0]
+    # EXTRACT RESULTS
+    documents = results["documents"][0]
 
-    # Source papers
-    source_papers = []
+    metadatas = results["metadatas"][0]
 
-    for metadata in results["metadatas"][0]:
-        source_papers.append(metadata["paper"])
+    distances = results["distances"][0]
 
-    # Remove duplicates
-    source_papers = list(set(source_papers))
+    # FILTER RELEVANT CHUNKS
+    filtered_chunks = []
 
-    # Generate AI summary
+    source_papers = set()
+
+    for doc, metadata, distance in zip(
+
+        documents,
+        metadatas,
+        distances
+
+    ):
+
+        # KEEP ONLY RELEVANT CHUNKS
+        if distance <= RELEVANCE_THRESHOLD:
+
+            filtered_chunks.append({
+
+                "text":
+                doc,
+
+                "section":
+                metadata.get(
+                    "section",
+                    "Unknown Section"
+                )
+
+            })
+
+            source_papers.add(
+                metadata["paper"]
+            )
+
+    # NO RELEVANT RESULTS
+    if len(filtered_chunks) == 0:
+
+        return {
+
+            "summary":
+            "No sufficiently relevant papers were found in your library for this query",
+
+            "retrieved_chunks":
+            [],
+
+            "source_papers":
+            []
+
+        }
+
+    # SECTION-AWARE CONTEXT
+    chunk_texts = []
+
+    for chunk in filtered_chunks:
+
+        chunk_texts.append(
+
+            f"[{chunk['section']}]\n{chunk['text']}"
+
+        )
+
+    # GENERATE AI SUMMARY
     summary = generate_related_work(
+
         data.query,
-        retrieved_chunks
+
+        chunk_texts
+
     )
 
     return {
-        "summary": summary,
-        "retrieved_chunks": retrieved_chunks,
-        "source_papers": source_papers
+
+        "summary":
+        summary,
+
+        "retrieved_chunks":
+        chunk_texts,
+
+        "source_papers":
+        list(source_papers)
+
     }
