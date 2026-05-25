@@ -1,0 +1,15 @@
+# Ignore the Python backend database and uploaded test PDFs
+backend/chroma_db/
+backend/uploads/
+
+# Ignore local secret keys
+backend/.env
+
+# Ignore system junk files
+**/__pycache__/
+*.pyc
+.DS_Store
+
+# Ignore binary database leftovers
+*.bin
+*.pickle
