@@ -9,31 +9,26 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1"
 )
 
-def generate_related_work(query, retrieved_chunks):
+# UPDATED: Signature now accepts lists for chunks and metadata references directly
+def generate_related_work(chunks: list[str], references: list[dict]) -> str:
+    
+    # NEW: Formats the dictionary data into a clean text block for the LLM to read
+    ref_block = "\n".join(
+        f"- {r['authors']} ({r['year']}). {r['title']}."
+        for r in references
+    )
+    
+    # UPDATED: Trainer's strict academic prompt structure
+    prompt = f"""You are writing a related work section for an academic paper.
+Use only the information in the provided excerpts.
+Cite using the references listed below — do not invent authors or years.
+Available references:
+{ref_block}
 
-    context = "\n\n".join(retrieved_chunks)
+Excerpts:
+{chr(10).join(chunks)}
 
-    prompt = f"""
-You are an academic research assistant.
-
-Using ONLY the retrieved research content below,
-generate a professional Related Work summary.
-
-User Research Topic:
-{query}
-
-Retrieved Research Content:
-{context}
-
-Instructions:
-- Use only provided research content
-- Do not invent papers or citations
-- Write 2 professional paragraphs
-- Add citation style references naturally
-- Example:
-  (Attention Is All You Need, 2017)
-- Keep response concise and academic
-"""
+Write 2–3 paragraphs with inline citations like (Authors, Year)."""
 
     response = client.chat.completions.create(
         model="openai/gpt-3.5-turbo",
